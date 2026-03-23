@@ -204,6 +204,15 @@ templates:
       - "License Site Id line in observed data appeared as either '142933' (Quote this for support) or None."
       - "Keep indentation exactly as shown if the downstream parser is whitespace-sensitive."
 
+  - id: do_minuteop
+    family: MINUTEOP
+    metrics_generated: ["db.minuteop"]
+    format: "{timestamp} {thread_hex} DoMinuteOp() on objects complete"
+    notes:
+      - "Fires approximately once per minute per active thread (typically 5 threads: 2FC0, 2C58, B57C, 0CF8, 272C)."
+      - "No bracketed family tag — literal text only."
+      - "Used as a liveness/heartbeat signal to confirm the SCADA DB is processing scheduled minute operations."
+
   - id: snapshot_completed
     family: SNAPSHOT
     metrics_generated: ["db.snapshottime"]
@@ -227,5 +236,6 @@ observed_prevalence:
   stby_transfer_complete_all_variants: 185
   logic_onschedule: 148
   datafile_flush_cycle_complete: 34
+  do_minuteop: 500
   general_information_snapshot: 3
   snapshot_completed: 1

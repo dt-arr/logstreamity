@@ -74,6 +74,7 @@ const TEMPLATES = [
   { id: 'stby_transfer_complete',       weight: 185   },
   { id: 'logic_onschedule',             weight: 148   },
   { id: 'datafile_flush_cycle_complete',weight: 34    },
+  { id: 'do_minuteop',                  weight: 500   },
   { id: 'general_information_snapshot', weight: 3     },
   { id: 'snapshot_completed',           weight: 1     },
 ];
@@ -124,6 +125,8 @@ function renderSingleLine(id, ts, serverName) {
       const blockFn = STBY_BLOCK_FNS[ri(0, STBY_BLOCK_FNS.length - 1)];
       return `${t} ${h} [STBY] 1 Transfer ${ri(1, 999)} Complete: Time ${fmt3dp(Math.random() * 10)} S, ${blockFn(() => ri(0, 50000))}, ${serverName} `;
     }
+    case 'do_minuteop':
+      return `${t} ${h} DoMinuteOp() on objects complete`;
     case 'snapshot_completed':
       return `${t} ${h} ...snapshot completed in ${ri(50, 2000)} ms.`;
     default:
