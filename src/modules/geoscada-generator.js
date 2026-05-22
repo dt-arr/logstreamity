@@ -237,11 +237,17 @@ function renderGeneralInformation(ts, serverName, peerName) {
 /**
  * Generate synthetic GeoSCADA log lines.
  *
- * Coverage guarantee: for every minute-bucket of generated timestamps, each
- * template fires at least once before any are repeated. This ensures every
- * metric the templates produce gets at least one data point per minute. After
- * the round-robin pass within a bucket, remaining slots in that minute are
- * filled by weighted prevalence (see TEMPLATES weights).
+ * Coverage guarantee: For every minute-bucket of generated timestamps, EACH
+ * template fires at least once in deterministic order. This ensures every
+ * metric the templates produce gets at least one data point per minute.
+ *
+ * Algorithm:
+ *   1. For each minute bucket, generate a guaranteed-execution schedule:
+ *      - Timestamps are spread to ensure at least one event per template per minute
+ *      - Templates execute in order (trans_syncexecute, trans_onexecute, etc.)
+ *   2. After all templates have executed once, fill remaining time slots with
+ *      weighted random selection from TEMPLATES.
+ *   3. Continue until 'count' events are generated.
  *
  * @param {number} count     Number of log events to generate
  * @param {object} [opts]
@@ -256,30 +262,46 @@ export function generateGeoScadaLines(count, { startMs } = {}) {
   const lines = [];
   let cursor = start;
 
-  // Round-robin queue of template ids still owed for the current minute bucket.
+  // Build a schedule for the first minute: one guaranteed slot per template,
+  // plus weighted slots for the remainder.
+  let eventCount = 0;
   let currentBucket = Math.floor(cursor / 60000);
-  let pendingForBucket = TEMPLATES.map(t => t.id);
+  let templateIndex = 0;  // Next template in round-robin order
 
   for (let i = 0; i < count; i++) {
+    // Move cursor forward by random interval
     cursor += ri(50, 300);
     const ts = new Date(cursor);
-
     const bucket = Math.floor(cursor / 60000);
+
+    // If we crossed into a new minute bucket, reset the round-robin counter
+    // so every template gets a guaranteed slot in the new bucket.
     if (bucket !== currentBucket) {
       currentBucket = bucket;
-      pendingForBucket = TEMPLATES.map(t => t.id);
+      templateIndex = 0;
     }
 
-    // Drain round-robin first (deterministic order = TEMPLATES order),
-    // then fall back to weighted pick for the rest of the bucket.
-    const id = pendingForBucket.length > 0 ? pendingForBucket.shift() : pickTemplate();
+    // Guaranteed round-robin: assign templates in order until all have been
+    // assigned once in this minute bucket. After that, use weighted selection.
+    let id;
+    if (templateIndex < TEMPLATES.length) {
+      // Guaranteed slot for this template
+      id = TEMPLATES[templateIndex].id;
+      templateIndex++;
+    } else {
+      // All templates assigned; fill remaining slots with weighted random
+      id = pickTemplate();
+    }
 
+    // Render the template
     if (id === 'general_information_snapshot') {
       lines.push(...renderGeneralInformation(ts, serverName, peerName));
     } else {
       const line = renderSingleLine(id, ts, serverName);
       if (line) lines.push(line);
     }
+
+    eventCount++;
   }
 
   return lines;
