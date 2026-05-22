@@ -226,6 +226,82 @@ generation_guidelines:
   - "For fake data, replace private IPs, server names, license ids, and client identifiers with sanitized placeholders or safe synthetic values."
   - "Do not invent completely new message families if the parser must stay aligned to the observed metric-producing population."
   - "For high-volume synthetic generation, weight templates roughly by observed prevalence: TRANS >> SVR >> SVRADVISE > LUS/STBY/LOGIC > DATAFILE > GENERAL_INFORMATION/SNAPSHOT."
+  - "Every template MUST appear at least once within each rolling minute of generated output so every metric receives at least one data point per minute. Generators should emit one of every template at the start of each minute bucket, then fall back to weighted prevalence for the remainder of the minute."
+
+# Numeric ranges for each templated field. Generators should sample uniformly within
+# [min, max] inclusive unless distribution is specified. These ranges define the
+# expected dynamic range of metrics produced from these log lines.
+value_ranges:
+
+  trans_syncexecute:
+    runtime_seconds_6dp: { min: 0.000001, max: 0.000100, format: "6dp" }
+
+  trans_onexecute:
+    runtime_seconds_6dp: { min: 0.000010, max: 0.001000, format: "6dp" }
+
+  svr_accepted_connection:
+    connection_number: { min: 1, max: 9999 }
+    src_port:          { min: 1024, max: 65535 }
+    dest_port:         { min: 1024, max: 65535 }
+    src_ip_octet:      { min: 1, max: 254, note: "192.168.<octet>.<octet>" }
+    dest_ip_octet:     { min: 1, max: 254, note: "192.168.<octet>.<octet>" }
+    socket_hex:        { min: 0x0000, max: 0xFFFF, format: "HEX4" }
+
+  svradvise_sendevent:
+    area_letter:    { values: ["A", "Z"], note: "two uppercase letters AA..ZZ" }
+    area_number:    { min: 1, max: 999 }
+    bytes:          { min: 50, max: 500 }
+    client_id:      { min: 1, max: 99 }
+    queue_count:    { min: 1, max: 5, note: "usually 1; rare spikes up to 5" }
+
+  lus_lock_usage:
+    percent_4dp: { min: 0.0000, max: 100.0000, format: "4dp", typical_max: 50.0, note: "DB lock usage 0-100%; values >70% indicate contention" }
+
+  logic_onschedule:
+    programs: { min: 1, max: 20 }
+
+  datafile_flush_cycle_complete:
+    files:             { min: 0, max: 5 }
+    bytes_per_file:    { min: 0, max: 4096, note: "total bytes = files * bytes_per_file" }
+    milliseconds_6dp:  { min: 0.001000, max: 5.000000, format: "6dp" }
+
+  stby_transfer_complete:
+    transfer_number:      { min: 1, max: 999 }
+    runtime_seconds_3dp:  { min: 0.001, max: 10.000, format: "3dp" }
+    record_counter:       { min: 0, max: 50000, note: "applies to Data/Dyn/Int/Evt/HisRec/AlsRec/JnlRec/JnlFile/Cfg" }
+
+  snapshot_completed:
+    snapshot_ms: { min: 50, max: 2000 }
+
+  do_minuteop: {}  # no numeric values; literal heartbeat line
+
+  general_information_snapshot:
+    total_physical_memory_mb:     { min: 32768, max: 65536 }
+    available_physical_memory_mb: { min: 8192,  max: 65536, note: "must be <= total_physical_memory_mb" }
+    total_paging_file_mb:         { min: 16384, max: 32768 }
+    available_paging_file_mb:     { min: 4096,  max: 32768, note: "must be <= total_paging_file_mb" }
+    total_virtual_memory_mb:      { min: 131072, max: 524288 }
+    available_virtual_memory_mb:  { min: 65536,  max: 524288, note: "must be <= total_virtual_memory_mb" }
+    process_working_set_size_mb:  { min: 500, max: 2000 }
+    process_peak_working_set_mb:  { min: 500, max: 2000 }
+    process_page_file_usage_mb:   { min: 200, max: 1000 }
+    process_peak_page_file_mb:    { min: 200, max: 1000 }
+    memory_used_by_db_objects_kb: { min: 10000, max: 500000 }
+    total_database_points:        { min: 50000, max: 500000 }
+    database_points:              { min: 10000, max: 500000, note: "<= total_database_points" }
+    total_opc_clients:            { min: 50, max: 200 }
+    opc_clients:                  { min: 0,  max: 200, note: "<= total_opc_clients" }
+    total_viewx_clients:          { min: 20, max: 100 }
+    viewx_clients:                { min: 0,  max: 100, note: "<= total_viewx_clients" }
+    total_webx_clients:           { min: 20, max: 100 }
+    webx_clients:                 { min: 0,  max: 100, note: "<= total_webx_clients" }
+    total_data_access_clients:    { min: 20, max: 100 }
+    data_access_clients:          { min: 0,  max: 100, note: "<= total_data_access_clients" }
+    http_port:                    { min: 8000, max: 8099 }
+    https_port:                   { min: 8443, max: 8543 }
+    state_change_offset_ms:       { min: 3600000, max: 604800000, note: "1 hour to 7 days before the snapshot timestamp" }
+    license_site_id_present_pct:  { value: 90, note: "90% of snapshots have a numeric license id; 10% show 'None'" }
+    is_main_pct:                  { value: 50, note: "50% Main / 50% Standby" }
 
 observed_prevalence:
   trans_syncexecute: 31598

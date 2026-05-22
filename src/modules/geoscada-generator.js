@@ -64,6 +64,43 @@ const REGISTRY_ROOT_POOL = [
   'HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\AVEVA\\GeoSCADA',
 ];
 
+// Value ranges mirrored from geoscada_log_content_reference.yaml `value_ranges`.
+// Keep this in sync with the YAML when either side changes.
+const RANGES = {
+  trans_syncexecute:               { seconds:  { min: 0.000001, max: 0.000100 } },
+  trans_onexecute:                 { seconds:  { min: 0.000010, max: 0.001000 } },
+  svr_accepted_connection:         { connection: { min: 1, max: 9999 }, port: { min: 1024, max: 65535 }, ipOctet: { min: 1, max: 254 } },
+  svradvise_sendevent:             { areaNumber: { min: 1, max: 999 }, bytes: { min: 50, max: 500 }, clientId: { min: 1, max: 99 }, queueCount: { min: 1, max: 5 } },
+  lus_lock_usage:                  { percent: { min: 0, max: 100 } },
+  logic_onschedule:                { programs: { min: 1, max: 20 } },
+  datafile_flush_cycle_complete:   { files: { min: 0, max: 5 }, bytesPerFile: { min: 0, max: 4096 }, ms: { min: 0.001, max: 5.0 } },
+  stby_transfer_complete:          { transfer: { min: 1, max: 999 }, seconds: { min: 0.001, max: 10.0 }, record: { min: 0, max: 50000 } },
+  snapshot_completed:              { ms: { min: 50, max: 2000 } },
+  general_information_snapshot: {
+    totalPhysMb:    { min: 32768,  max: 65536  },
+    totalPageMb:    { min: 16384,  max: 32768  },
+    totalVirtMb:    { min: 131072, max: 524288 },
+    workingSetMb:   { min: 500,    max: 2000   },
+    pageFileMb:     { min: 200,    max: 1000   },
+    dbObjectsKb:    { min: 10000,  max: 500000 },
+    totalDbPoints:  { min: 50000,  max: 500000 },
+    totalOpc:       { min: 50,     max: 200    },
+    totalViewx:     { min: 20,     max: 100    },
+    totalWebx:      { min: 20,     max: 100    },
+    totalDac:       { min: 20,     max: 100    },
+    httpPort:       { min: 8000,   max: 8099   },
+    httpsPort:      { min: 8443,   max: 8543   },
+    stateChangeOffsetMs: { min: 3600000, max: 604800000 },
+    licenseIdPresentPct: 90,
+    isMainPct:           50,
+    licenseIdMin: 100000,
+    licenseIdMax: 999999,
+  },
+};
+
+function rr(r) { return ri(r.min, r.max); }
+function rf(r) { return Math.random() * (r.max - r.min) + r.min; }
+
 // Weighted template table — weights from observed_prevalence in the YAML reference
 const TEMPLATES = [
   { id: 'trans_syncexecute',            weight: 31598 },
@@ -104,31 +141,37 @@ function renderSingleLine(id, ts, serverName) {
   const h = hex4();
   switch (id) {
     case 'trans_syncexecute':
-      return `${t} ${h} [TRANS] 0 SyncExecute Time =   ${fmt6dp(Math.random() * 0.0001)} seconds`;
+      return `${t} ${h} [TRANS] 0 SyncExecute Time =   ${fmt6dp(rf(RANGES.trans_syncexecute.seconds))} seconds`;
     case 'trans_onexecute':
-      return `${t} ${h} [TRANS] 0 OnExecute Time =   ${fmt6dp(Math.random() * 0.001)} seconds`;
-    case 'svr_accepted_connection':
-      return `${t} ${h} [SVR] Accepted connection ${ri(1, 9999)} from ${randomIp()}:${randomPort()} to ${randomIp()}:${randomPort()} on socket ${hex4()}...`;
+      return `${t} ${h} [TRANS] 0 OnExecute Time =   ${fmt6dp(rf(RANGES.trans_onexecute.seconds))} seconds`;
+    case 'svr_accepted_connection': {
+      const r = RANGES.svr_accepted_connection;
+      const ip = () => `192.168.${rr(r.ipOctet)}.${rr(r.ipOctet)}`;
+      return `${t} ${h} [SVR] Accepted connection ${rr(r.connection)} from ${ip()}:${rr(r.port)} to ${ip()}:${rr(r.port)} on socket ${hex4()}...`;
+    }
     case 'svradvise_sendevent': {
+      const r = RANGES.svradvise_sendevent;
       const area = String.fromCharCode(65 + ri(0, 25)) + String.fromCharCode(65 + ri(0, 25));
-      return `${t} ${h} [SVRADVISE] ${area}#${ri(1, 999)} SendEvent: EVT_OPCAE_EVENT (${ri(50, 500)} bytes) to ClientId ${ri(1, 99)} (${ri(1, 5)} events queued)`;
+      return `${t} ${h} [SVRADVISE] ${area}#${rr(r.areaNumber)} SendEvent: EVT_OPCAE_EVENT (${rr(r.bytes)} bytes) to ClientId ${rr(r.clientId)} (${rr(r.queueCount)} events queued)`;
     }
     case 'lus_lock_usage':
-      return `${t} ${h} [LUS] Lock usage, ${fmt4dp(Math.random() * 100)}%, over the last second (diagnostic)`;
+      return `${t} ${h} [LUS] Lock usage, ${fmt4dp(rf(RANGES.lus_lock_usage.percent))}%, over the last second (diagnostic)`;
     case 'logic_onschedule':
-      return `${t} ${h} [LOGIC] OnSchedule() ${ri(1, 20)} programs to process`;
+      return `${t} ${h} [LOGIC] OnSchedule() ${rr(RANGES.logic_onschedule.programs)} programs to process`;
     case 'datafile_flush_cycle_complete': {
-      const files = ri(0, 5);
-      return `${t} ${h} [DATAFILE] Flush cycle complete, flushed ${files} files (${files * ri(0, 4096)} bytes), time taken ${fmt6dp(Math.random())} milliseconds`;
+      const r = RANGES.datafile_flush_cycle_complete;
+      const files = rr(r.files);
+      return `${t} ${h} [DATAFILE] Flush cycle complete, flushed ${files} files (${files * rr(r.bytesPerFile)} bytes), time taken ${fmt6dp(rf(r.ms))} milliseconds`;
     }
     case 'stby_transfer_complete': {
+      const r = RANGES.stby_transfer_complete;
       const blockFn = STBY_BLOCK_FNS[ri(0, STBY_BLOCK_FNS.length - 1)];
-      return `${t} ${h} [STBY] 1 Transfer ${ri(1, 999)} Complete: Time ${fmt3dp(Math.random() * 10)} S, ${blockFn(() => ri(0, 50000))}, ${serverName} `;
+      return `${t} ${h} [STBY] 1 Transfer ${rr(r.transfer)} Complete: Time ${fmt3dp(rf(r.seconds))} S, ${blockFn(() => rr(r.record))}, ${serverName} `;
     }
     case 'do_minuteop':
       return `${t} ${h} DoMinuteOp() on objects complete`;
     case 'snapshot_completed':
-      return `${t} ${h} ...snapshot completed in ${ri(50, 2000)} ms.`;
+      return `${t} ${h} ...snapshot completed in ${rr(RANGES.snapshot_completed.ms)} ms.`;
     default:
       return null;
   }
@@ -137,20 +180,23 @@ function renderSingleLine(id, ts, serverName) {
 // Renders the multi-line general information snapshot block; returns string[]
 function renderGeneralInformation(ts, serverName, peerName) {
   const t = fmtTs(ts);
-  const totPhys   = ri(32768, 65536);  const avPhys  = ri(8192, totPhys);
-  const totPage   = ri(16384, 32768);  const avPage  = ri(4096, totPage);
-  const totVirt   = ri(131072, 524288);const avVirt  = ri(65536, totVirt);
-  const totDbPts  = ri(50000, 500000); const dbPts   = ri(10000, totDbPts);
-  const totOpc    = ri(50, 200);       const opc     = ri(0, totOpc);
-  const totViewx  = ri(20, 100);       const viewx   = ri(0, totViewx);
-  const totWebx   = ri(20, 100);       const webx    = ri(0, totWebx);
-  const totDac    = ri(20, 100);       const dac     = ri(0, totDac);
+  const g = RANGES.general_information_snapshot;
+  const totPhys = rr(g.totalPhysMb); const avPhys = ri(Math.floor(totPhys * 0.25), totPhys);
+  const totPage = rr(g.totalPageMb); const avPage = ri(Math.floor(totPage * 0.25), totPage);
+  const totVirt = rr(g.totalVirtMb); const avVirt = ri(Math.floor(totVirt * 0.5),  totVirt);
+  const totDbPts = rr(g.totalDbPoints); const dbPts = ri(Math.floor(totDbPts * 0.2), totDbPts);
+  const totOpc   = rr(g.totalOpc);   const opc   = ri(0, totOpc);
+  const totViewx = rr(g.totalViewx); const viewx = ri(0, totViewx);
+  const totWebx  = rr(g.totalWebx);  const webx  = ri(0, totWebx);
+  const totDac   = rr(g.totalDac);   const dac   = ri(0, totDac);
   const pct = (a, b) => ((a / b) * 100).toFixed(1);
-  const isMain = Math.random() > 0.5;
-  const stateChangeDt = new Date(ts.getTime() - ri(3600000, 86400000 * 7));
+  const isMain = Math.random() * 100 < g.isMainPct;
+  const stateChangeDt = new Date(ts.getTime() - rr(g.stateChangeOffsetMs));
   const wentMainStr = isMain ? fmtTs(stateChangeDt) : 'Never';
   const stateStr = isMain ? 'Main' : `Standby to "${peerName}"`;
-  const licId = Math.random() > 0.1 ? `${ri(100000, 999999)} (Quote this for support)` : 'None';
+  const licId = Math.random() * 100 < g.licenseIdPresentPct
+    ? `${ri(g.licenseIdMin, g.licenseIdMax)} (Quote this for support)`
+    : 'None';
 
   return [
     `${t} 0000 01. General Information`,
@@ -168,11 +214,11 @@ function renderGeneralInformation(ts, serverName, peerName) {
     `    Available Physical Memory: ${avPhys} of ${totPhys} MBytes`,
     `    Available Paging File: ${avPage} of ${totPage} MBytes`,
     `    Available Virtual Memory: ${avVirt} of ${totVirt} MBytes`,
-    `    Process Working Set Size: ${ri(500, 2000)} MBytes`,
-    `    Process Peak Working Set Size: ${ri(500, 2000)} MBytes`,
-    `    Process Page File Usage: ${ri(200, 1000)} MBytes`,
-    `    Process Peak Page File Usage: ${ri(200, 1000)} MBytes`,
-    `    Memory used by database objects: ${ri(10000, 500000)} KBytes`,
+    `    Process Working Set Size: ${rr(g.workingSetMb)} MBytes`,
+    `    Process Peak Working Set Size: ${rr(g.workingSetMb)} MBytes`,
+    `    Process Page File Usage: ${rr(g.pageFileMb)} MBytes`,
+    `    Process Peak Page File Usage: ${rr(g.pageFileMb)} MBytes`,
+    `    Memory used by database objects: ${rr(g.dbObjectsKb)} KBytes`,
     `    Operating System: ${OS_POOL[ri(0, OS_POOL.length - 1)]}`,
     `    CPU: ${CPU_POOL[ri(0, CPU_POOL.length - 1)]}`,
     `    Registry Root: ${REGISTRY_ROOT_POOL[ri(0, REGISTRY_ROOT_POOL.length - 1)]}`,
@@ -182,14 +228,20 @@ function renderGeneralInformation(ts, serverName, peerName) {
     `    OPC Clients: ${opc} of ${totOpc} (${pct(opc, totOpc)}%)`,
     `    ViewX Clients: ${viewx} of ${totViewx} (${pct(viewx, totViewx)}%)`,
     `    WebX Clients: ${webx} of ${totWebx} (${pct(webx, totWebx)}%)`,
-    `    Web Server HTTP Port: ${ri(8000, 8099)}`,
-    `    Web Server HTTPS Port: ${ri(8443, 8543)}`,
+    `    Web Server HTTP Port: ${rr(g.httpPort)}`,
+    `    Web Server HTTPS Port: ${rr(g.httpsPort)}`,
     `    Telnet Server: ${Math.random() > 0.5 ? 'Enabled' : 'Disabled'}`,
   ];
 }
 
 /**
  * Generate synthetic GeoSCADA log lines.
+ *
+ * Coverage guarantee: for every minute-bucket of generated timestamps, each
+ * template fires at least once before any are repeated. This ensures every
+ * metric the templates produce gets at least one data point per minute. After
+ * the round-robin pass within a bucket, remaining slots in that minute are
+ * filled by weighted prevalence (see TEMPLATES weights).
  *
  * @param {number} count     Number of log events to generate
  * @param {object} [opts]
@@ -204,10 +256,23 @@ export function generateGeoScadaLines(count, { startMs } = {}) {
   const lines = [];
   let cursor = start;
 
+  // Round-robin queue of template ids still owed for the current minute bucket.
+  let currentBucket = Math.floor(cursor / 60000);
+  let pendingForBucket = TEMPLATES.map(t => t.id);
+
   for (let i = 0; i < count; i++) {
     cursor += ri(50, 300);
     const ts = new Date(cursor);
-    const id = pickTemplate();
+
+    const bucket = Math.floor(cursor / 60000);
+    if (bucket !== currentBucket) {
+      currentBucket = bucket;
+      pendingForBucket = TEMPLATES.map(t => t.id);
+    }
+
+    // Drain round-robin first (deterministic order = TEMPLATES order),
+    // then fall back to weighted pick for the rest of the bucket.
+    const id = pendingForBucket.length > 0 ? pendingForBucket.shift() : pickTemplate();
 
     if (id === 'general_information_snapshot') {
       lines.push(...renderGeneralInformation(ts, serverName, peerName));
