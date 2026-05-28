@@ -8,6 +8,11 @@ export const GENERATOR_INFO = {
   badgeColor: "bg-blue-100 text-blue-700"
 };
 
+// Must match `distribution_mode` in geoscada_log_content_reference.yaml
+// "realistic" = weighted by observed_prevalence (real-world skew)
+// "uniform"   = strict round-robin, equal counts for all templates
+export const DISTRIBUTION_MODE = "realistic";
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -139,6 +144,10 @@ const RANGES = {
 // Persists the current value for each numeric metric field across calls within a
 // JS session. Key format: "{event_type}.{field_name}" e.g. "lus_lock_usage.percent".
 const _walkState = new Map();
+
+// --- Uniform round-robin state ---
+// Monotonically incrementing index; wraps via modulo over TEMPLATES.length.
+let _roundRobinIndex = 0;
 
 /**
  * Returns the next smooth value for a numeric metric field.
@@ -341,24 +350,25 @@ function renderGeneralInformation(ts, serverName, peerName) {
 /**
  * Generate synthetic GeoSCADA log lines.
  *
- * Coverage guarantee: For every minute-bucket of generated timestamps, EACH
- * template fires at least once in deterministic order. This ensures every
- * metric the templates produce gets at least one data point per minute.
+ * Two distribution modes are supported (see DISTRIBUTION_MODE):
  *
- * Algorithm:
- *   1. For each minute bucket, generate a guaranteed-execution schedule:
- *      - Timestamps are spread to ensure at least one event per template per minute
- *      - Templates execute in order (trans_syncexecute, trans_onexecute, etc.)
- *   2. After all templates have executed once, fill remaining time slots with
- *      weighted random selection from TEMPLATES.
- *   3. Continue until 'count' events are generated.
+ *   "realistic" — Bucket-based coverage guarantee: every template fires at
+ *     least once per minute-bucket, then remaining slots use weighted random
+ *     selection (observed_prevalence weights), mirroring real-world skew.
+ *
+ *   "uniform" — Strict round-robin: templates cycle in declaration order via
+ *     a persistent _roundRobinIndex. Every TEMPLATES.length events covers each
+ *     template exactly once. Counts will be within ±1 of each other regardless
+ *     of total count. Useful for coverage testing at low log volume.
  *
  * @param {number} count     Number of log events to generate
  * @param {object} [opts]
- * @param {number} [opts.startMs]  Start epoch ms (defaults to now minus ~count seconds)
+ * @param {number} [opts.startMs]          Start epoch ms (defaults to now minus ~count seconds)
+ * @param {string} [opts.distributionMode] Overrides DISTRIBUTION_MODE for this call ("realistic"|"uniform")
  * @returns {string[]}  Array of log line strings ready for ingestion
  */
-export function generateGeoScadaLines(count, { startMs } = {}) {
+export function generateGeoScadaLines(count, { startMs, distributionMode } = {}) {
+  const mode = distributionMode ?? DISTRIBUTION_MODE;
   const serverIdx = ri(0, SERVER_POOL.length - 1);
   const serverName = SERVER_POOL[serverIdx];
   const peerName   = PEER_POOL[serverIdx];
@@ -366,35 +376,38 @@ export function generateGeoScadaLines(count, { startMs } = {}) {
   const lines = [];
   let cursor = start;
 
-  // Build a schedule for the first minute: one guaranteed slot per template,
-  // plus weighted slots for the remainder.
-  let eventCount = 0;
+  // Realistic-mode state (unused in uniform mode but harmless to declare)
   let currentBucket = Math.floor(cursor / 60000);
-  let templateIndex = 0;  // Next template in round-robin order
+  let templateIndex = 0;
 
   for (let i = 0; i < count; i++) {
-    // Move cursor forward by random interval
+    // Move cursor forward by random interval (same in both modes)
     cursor += ri(50, 300);
     const ts = new Date(cursor);
-    const bucket = Math.floor(cursor / 60000);
 
-    // If we crossed into a new minute bucket, reset the round-robin counter
-    // so every template gets a guaranteed slot in the new bucket.
-    if (bucket !== currentBucket) {
-      currentBucket = bucket;
-      templateIndex = 0;
-    }
-
-    // Guaranteed round-robin: assign templates in order until all have been
-    // assigned once in this minute bucket. After that, use weighted selection.
     let id;
-    if (templateIndex < TEMPLATES.length) {
-      // Guaranteed slot for this template
-      id = TEMPLATES[templateIndex].id;
-      templateIndex++;
+    if (mode === 'uniform') {
+      // Strict round-robin: cycle through TEMPLATES in declaration order.
+      // _roundRobinIndex persists across calls so counts stay balanced
+      // even when generateGeoScadaLines() is invoked multiple times.
+      id = TEMPLATES[_roundRobinIndex % TEMPLATES.length].id;
+      _roundRobinIndex++;
     } else {
-      // All templates assigned; fill remaining slots with weighted random
-      id = pickTemplate();
+      // Realistic mode: guarantee one slot per template per minute-bucket,
+      // then fill remaining slots with observed_prevalence-weighted random.
+      const bucket = Math.floor(cursor / 60000);
+      if (bucket !== currentBucket) {
+        currentBucket = bucket;
+        templateIndex = 0;
+      }
+      if (templateIndex < TEMPLATES.length) {
+        // Guaranteed slot for this template
+        id = TEMPLATES[templateIndex].id;
+        templateIndex++;
+      } else {
+        // All templates assigned; fill remaining slots with weighted random
+        id = pickTemplate();
+      }
     }
 
     // Render the template
@@ -404,8 +417,6 @@ export function generateGeoScadaLines(count, { startMs } = {}) {
       const line = renderSingleLine(id, ts, serverName);
       if (line) lines.push(line);
     }
-
-    eventCount++;
   }
 
   return lines;

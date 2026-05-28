@@ -6,6 +6,14 @@ purpose: >
 
 content_field_only: true
 
+# Controls how log lines are distributed across template types.
+# "realistic" - uses observed_prevalence weights (mirrors real-world skew,
+#               e.g. TRANS >> SVR >> SNAPSHOT).
+# "uniform"   - strict round-robin: every template fires exactly once per
+#               cycle in declaration order, giving equal representation.
+#               Use this for richer test coverage at lower log volume.
+distribution_mode: "uniform"
+
 common_tokens:
   timestamp: "<DD-MMM-YYYY HH:MM:SS.mmm>"
   thread_hex: "<HEX4>"
