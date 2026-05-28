@@ -67,29 +67,66 @@ const REGISTRY_ROOT_POOL = [
 // Value ranges mirrored from geoscada_log_content_reference.yaml `value_ranges`.
 // Keep this in sync with the YAML when either side changes.
 const RANGES = {
-  trans_syncexecute:               { seconds:  { min: 0.000001, max: 0.000100 } },
-  trans_onexecute:                 { seconds:  { min: 0.000010, max: 0.001000 } },
-  svr_accepted_connection:         { connection: { min: 1, max: 9999 }, port: { min: 1024, max: 65535 }, ipOctet: { min: 1, max: 254 } },
-  svradvise_sendevent:             { areaNumber: { min: 1, max: 999 }, bytes: { min: 50, max: 500 }, clientId: { min: 1, max: 99 }, queueCount: { min: 1, max: 5 } },
-  lus_lock_usage:                  { percent: { min: 0, max: 100 } },
-  logic_onschedule:                { programs: { min: 1, max: 20 } },
-  datafile_flush_cycle_complete:   { files: { min: 0, max: 5 }, bytesPerFile: { min: 0, max: 4096 }, ms: { min: 0.001, max: 5.0 } },
-  stby_transfer_complete:          { transfer: { min: 1, max: 999 }, seconds: { min: 0.001, max: 10.0 }, record: { min: 0, max: 50000 } },
-  snapshot_completed:              { ms: { min: 50, max: 2000 } },
+  trans_syncexecute: {
+    seconds: { min: 0.000800, max: 0.001200, baseline_min: 0.000850, baseline_max: 0.000950, spike_max: 0.001100, rare_spike_max: 0.001200, spike_ramp_samples: 5 },
+  },
+  trans_onexecute: {
+    seconds: { min: 0.000800, max: 0.001200, baseline_min: 0.000800, baseline_max: 0.000900, spike_max: 0.001050, rare_spike_max: 0.001200, spike_ramp_samples: 5 },
+  },
+  svr_accepted_connection: {
+    connection: { min: 100,  max: 9999  },
+    port:       { min: 1024, max: 65535 },
+    ipOctet:    { min: 1,    max: 254   },
+  },
+  svradvise_sendevent: {
+    areaNumber: { min: 1,   max: 999 },
+    bytes:      { min: 200, max: 500 },
+    clientId:   { min: 1,   max: 99  },
+    queueCount: { min: 3, max: 5, baseline_min: 3, baseline_max: 4, spike_max: 5, rare_spike_max: 5, spike_ramp_samples: 5 },
+  },
+  lus_lock_usage: {
+    percent: { min: 70.0000, max: 80.0000, baseline_min: 71.0000, baseline_max: 74.0000, spike_max: 76.0000, rare_spike_max: 80.0000, spike_ramp_samples: 5 },
+  },
+  logic_onschedule: {
+    programs: { min: 12, max: 20, baseline_min: 13, baseline_max: 14, spike_max: 17, rare_spike_max: 20, spike_ramp_samples: 5 },
+  },
+  datafile_flush_cycle_complete: {
+    files:        { min: 0, max: 2    },
+    bytesPerFile: { min: 0, max: 2048 },
+    ms: { min: 3.000000, max: 4.500000, baseline_min: 3.200000, baseline_max: 3.800000, spike_max: 4.200000, rare_spike_max: 4.500000, spike_ramp_samples: 5 },
+  },
+  stby_transfer_complete: {
+    transfer: { min: 1,     max: 999   },
+    seconds:  { min: 0.006, max: 0.009, baseline_min: 0.006, baseline_max: 0.0075, spike_max: 0.008, rare_spike_max: 0.009, spike_ramp_samples: 5 },
+    record:   { min: 35000, max: 50000, baseline_min: 38000, baseline_max: 47000, spike_ramp_samples: 5 },
+  },
+  snapshot_completed: {
+    ms: { min: 1100, max: 1800, baseline_min: 1200, baseline_max: 1400, spike_max: 1550, rare_spike_max: 1800, spike_ramp_samples: 5 },
+  },
   general_information_snapshot: {
-    totalPhysMb:    { min: 32768,  max: 65536  },
-    totalPageMb:    { min: 16384,  max: 32768  },
-    totalVirtMb:    { min: 131072, max: 524288 },
-    workingSetMb:   { min: 500,    max: 2000   },
-    pageFileMb:     { min: 200,    max: 1000   },
-    dbObjectsKb:    { min: 10000,  max: 500000 },
-    totalDbPoints:  { min: 50000,  max: 500000 },
-    totalOpc:       { min: 50,     max: 200    },
-    totalViewx:     { min: 20,     max: 100    },
-    totalWebx:      { min: 20,     max: 100    },
-    totalDac:       { min: 20,     max: 100    },
-    httpPort:       { min: 8000,   max: 8099   },
-    httpsPort:      { min: 8443,   max: 8543   },
+    totalPhysMb:      { min: 49152,  max: 49152  },
+    availPhysMb:      { min: 8192,   max: 14336,  baseline_min: 10240, baseline_max: 13312, spike_ramp_samples: 5 },
+    totalPageMb:      { min: 16384,  max: 24576  },
+    availPageMb:      { min: 4096,   max: 8192,   baseline_min: 5120,  baseline_max: 7168,  spike_ramp_samples: 5 },
+    totalVirtMb:      { min: 131072, max: 524288 },
+    availVirtMb:      { min: 65536,  max: 131072 },
+    workingSetMb:     { min: 1500,   max: 2000,   baseline_min: 1600,  baseline_max: 1850,  spike_ramp_samples: 5 },
+    peakWorkingSetMb: { min: 1700,   max: 2000   },
+    pageFileMb:       { min: 600,    max: 800,    baseline_min: 650,   baseline_max: 770   },
+    peakPageFileMb:   { min: 800,    max: 1000   },
+    dbObjectsKb:      { min: 380000, max: 500000, baseline_min: 400000, baseline_max: 470000, spike_ramp_samples: 5 },
+    totalDbPoints:    { min: 220000, max: 250000 },
+    dbPoints:         { min: 210000, max: 250000, baseline_min: 215000, baseline_max: 240000, spike_ramp_samples: 5 },
+    totalOpc:         { min: 50,     max: 200    },
+    opc:              { min: 8,      max: 12     },
+    totalViewx:       { min: 20,     max: 100    },
+    viewx:            { min: 3,      max: 5      },
+    totalWebx:        { min: 20,     max: 100    },
+    webx:             { min: 4,      max: 6      },
+    totalDac:         { min: 30,     max: 100    },
+    dac:              { min: 22,     max: 30,    baseline_min: 23, baseline_max: 28, spike_ramp_samples: 5 },
+    httpPort:         { min: 8000,   max: 8099   },
+    httpsPort:        { min: 8443,   max: 8543   },
     stateChangeOffsetMs: { min: 3600000, max: 604800000 },
     licenseIdPresentPct: 90,
     isMainPct:           50,
@@ -97,6 +134,48 @@ const RANGES = {
     licenseIdMax: 999999,
   },
 };
+
+// --- Smooth random walk state ---
+// Persists the current value for each numeric metric field across calls within a
+// JS session. Key format: "{event_type}.{field_name}" e.g. "lus_lock_usage.percent".
+const _walkState = new Map();
+
+/**
+ * Returns the next smooth value for a numeric metric field.
+ * Values spend ~85% of time in [baseline_min, baseline_max], drift gradually
+ * toward spike territory (3% chance per tick), and revert via mean reversion.
+ * Max step per tick ≈ 2% of the baseline range — no teleporting.
+ */
+function smoothNext(key, cfg) {
+  const baseMin      = cfg.baseline_min   ?? cfg.min;
+  const baseMax      = cfg.baseline_max   ?? cfg.max;
+  const spikeMax     = cfg.spike_max      ?? baseMax;
+  const rareSpikeMax = cfg.rare_spike_max ?? spikeMax;
+  const rampSamples  = cfg.spike_ramp_samples ?? 5;
+  const center       = (baseMin + baseMax) / 2;
+
+  if (!_walkState.has(key)) _walkState.set(key, center);
+  let cur = _walkState.get(key);
+
+  const step = (baseMax - baseMin) * 0.02;
+  let next;
+
+  if (Math.random() < 0.03) {
+    // Gradual drift toward spike territory over rampSamples ticks
+    const target     = spikeMax + Math.random() * (rareSpikeMax - spikeMax);
+    const stepToward = (target - cur) / rampSamples;
+    next = cur + stepToward;
+  } else {
+    // Small random walk with gentle mean reversion toward baseline center
+    const pull  = (center - cur) * 0.1;
+    const noise = (Math.random() * 2 - 1) * step;
+    next = cur + pull + noise;
+  }
+
+  next = Math.max(cfg.min, Math.min(cfg.max, next));
+  _walkState.set(key, next);
+  return next;
+}
 
 function rr(r) { return ri(r.min, r.max); }
 function rf(r) { return Math.random() * (r.max - r.min) + r.min; }
@@ -141,9 +220,9 @@ function renderSingleLine(id, ts, serverName) {
   const h = hex4();
   switch (id) {
     case 'trans_syncexecute':
-      return `${t} ${h} [TRANS] 0 SyncExecute Time =   ${fmt6dp(rf(RANGES.trans_syncexecute.seconds))} seconds`;
+      return `${t} ${h} [TRANS] 0 SyncExecute Time =   ${fmt6dp(smoothNext('trans_syncexecute.seconds', RANGES.trans_syncexecute.seconds))} seconds`;
     case 'trans_onexecute':
-      return `${t} ${h} [TRANS] 0 OnExecute Time =   ${fmt6dp(rf(RANGES.trans_onexecute.seconds))} seconds`;
+      return `${t} ${h} [TRANS] 0 OnExecute Time =   ${fmt6dp(smoothNext('trans_onexecute.seconds', RANGES.trans_onexecute.seconds))} seconds`;
     case 'svr_accepted_connection': {
       const r = RANGES.svr_accepted_connection;
       const ip = () => `192.168.${rr(r.ipOctet)}.${rr(r.ipOctet)}`;
@@ -152,26 +231,26 @@ function renderSingleLine(id, ts, serverName) {
     case 'svradvise_sendevent': {
       const r = RANGES.svradvise_sendevent;
       const area = String.fromCharCode(65 + ri(0, 25)) + String.fromCharCode(65 + ri(0, 25));
-      return `${t} ${h} [SVRADVISE] ${area}#${rr(r.areaNumber)} SendEvent: EVT_OPCAE_EVENT (${rr(r.bytes)} bytes) to ClientId ${rr(r.clientId)} (${rr(r.queueCount)} events queued)`;
+      return `${t} ${h} [SVRADVISE] ${area}#${rr(r.areaNumber)} SendEvent: EVT_OPCAE_EVENT (${rr(r.bytes)} bytes) to ClientId ${rr(r.clientId)} (${Math.round(smoothNext('svradvise_sendevent.queueCount', r.queueCount))} events queued)`;
     }
     case 'lus_lock_usage':
-      return `${t} ${h} [LUS] Lock usage, ${fmt4dp(rf(RANGES.lus_lock_usage.percent))}%, over the last second (diagnostic)`;
+      return `${t} ${h} [LUS] Lock usage, ${fmt4dp(smoothNext('lus_lock_usage.percent', RANGES.lus_lock_usage.percent))}%, over the last second (diagnostic)`;
     case 'logic_onschedule':
-      return `${t} ${h} [LOGIC] OnSchedule() ${rr(RANGES.logic_onschedule.programs)} programs to process`;
+      return `${t} ${h} [LOGIC] OnSchedule() ${Math.round(smoothNext('logic_onschedule.programs', RANGES.logic_onschedule.programs))} programs to process`;
     case 'datafile_flush_cycle_complete': {
       const r = RANGES.datafile_flush_cycle_complete;
       const files = rr(r.files);
-      return `${t} ${h} [DATAFILE] Flush cycle complete, flushed ${files} files (${files * rr(r.bytesPerFile)} bytes), time taken ${fmt6dp(rf(r.ms))} milliseconds`;
+      return `${t} ${h} [DATAFILE] Flush cycle complete, flushed ${files} files (${files * rr(r.bytesPerFile)} bytes), time taken ${fmt6dp(smoothNext('datafile_flush_cycle_complete.ms', r.ms))} milliseconds`;
     }
     case 'stby_transfer_complete': {
       const r = RANGES.stby_transfer_complete;
       const blockFn = STBY_BLOCK_FNS[ri(0, STBY_BLOCK_FNS.length - 1)];
-      return `${t} ${h} [STBY] 1 Transfer ${rr(r.transfer)} Complete: Time ${fmt3dp(rf(r.seconds))} S, ${blockFn(() => rr(r.record))}, ${serverName} `;
+      return `${t} ${h} [STBY] 1 Transfer ${rr(r.transfer)} Complete: Time ${fmt3dp(smoothNext('stby_transfer_complete.seconds', r.seconds))} S, ${blockFn(() => Math.round(smoothNext('stby_transfer_complete.record', r.record)))}, ${serverName} `;
     }
     case 'do_minuteop':
       return `${t} ${h} DoMinuteOp() on objects complete`;
     case 'snapshot_completed':
-      return `${t} ${h} ...snapshot completed in ${rr(RANGES.snapshot_completed.ms)} ms.`;
+      return `${t} ${h} ...snapshot completed in ${Math.round(smoothNext('snapshot_completed.ms', RANGES.snapshot_completed.ms))} ms.`;
     default:
       return null;
   }
@@ -181,14 +260,39 @@ function renderSingleLine(id, ts, serverName) {
 function renderGeneralInformation(ts, serverName, peerName) {
   const t = fmtTs(ts);
   const g = RANGES.general_information_snapshot;
-  const totPhys = rr(g.totalPhysMb); const avPhys = ri(Math.floor(totPhys * 0.25), totPhys);
-  const totPage = rr(g.totalPageMb); const avPage = ri(Math.floor(totPage * 0.25), totPage);
-  const totVirt = rr(g.totalVirtMb); const avVirt = ri(Math.floor(totVirt * 0.5),  totVirt);
-  const totDbPts = rr(g.totalDbPoints); const dbPts = ri(Math.floor(totDbPts * 0.2), totDbPts);
-  const totOpc   = rr(g.totalOpc);   const opc   = ri(0, totOpc);
-  const totViewx = rr(g.totalViewx); const viewx = ri(0, totViewx);
-  const totWebx  = rr(g.totalWebx);  const webx  = ri(0, totWebx);
-  const totDac   = rr(g.totalDac);   const dac   = ri(0, totDac);
+
+  const totPhys = g.totalPhysMb.min;  // fixed at 49152
+  const avPhys  = Math.min(Math.round(smoothNext('gen.availPhysMb', g.availPhysMb)), totPhys);
+
+  const totPage = rr(g.totalPageMb);
+  const avPage  = Math.min(Math.round(smoothNext('gen.availPageMb', g.availPageMb)), totPage);
+
+  const totVirt = rr(g.totalVirtMb);
+  const avVirt  = Math.min(Math.round(smoothNext('gen.availVirtMb', g.availVirtMb)), totVirt);
+
+  const workingSetMb     = Math.round(smoothNext('gen.workingSetMb',     g.workingSetMb));
+  const peakWorkingSetMb = Math.max(workingSetMb, Math.round(smoothNext('gen.peakWorkingSetMb', g.peakWorkingSetMb)));
+
+  const pageFileMb     = Math.round(smoothNext('gen.pageFileMb',     g.pageFileMb));
+  const peakPageFileMb = Math.max(pageFileMb, Math.round(smoothNext('gen.peakPageFileMb', g.peakPageFileMb)));
+
+  const dbObjectsKb = Math.round(smoothNext('gen.dbObjectsKb', g.dbObjectsKb));
+
+  const totDbPts = rr(g.totalDbPoints);
+  const dbPts    = Math.min(Math.round(smoothNext('gen.dbPoints', g.dbPoints)), totDbPts);
+
+  const totOpc   = rr(g.totalOpc);
+  const opc      = Math.min(Math.round(smoothNext('gen.opc',   g.opc)),   totOpc);
+
+  const totViewx = rr(g.totalViewx);
+  const viewx    = Math.min(Math.round(smoothNext('gen.viewx', g.viewx)), totViewx);
+
+  const totWebx  = rr(g.totalWebx);
+  const webx     = Math.min(Math.round(smoothNext('gen.webx',  g.webx)),  totWebx);
+
+  const totDac   = rr(g.totalDac);
+  const dac      = Math.min(Math.round(smoothNext('gen.dac',   g.dac)),   totDac);
+
   const pct = (a, b) => ((a / b) * 100).toFixed(1);
   const isMain = Math.random() * 100 < g.isMainPct;
   const stateChangeDt = new Date(ts.getTime() - rr(g.stateChangeOffsetMs));
@@ -202,7 +306,7 @@ function renderGeneralInformation(ts, serverName, peerName) {
     `${t} 0000 01. General Information`,
     `    EcoStruxure Geo SCADA Expert 2021 on ${serverName}`,
     `    Version ${VERSION_POOL[ri(0, VERSION_POOL.length - 1)]}`,
-    `    Copyright \u00A9 2005-2024 AVEVA Group Limited or its subsidiaries. All rights reserved.`,
+    `    Copyright © 2005-2024 AVEVA Group Limited or its subsidiaries. All rights reserved.`,
     `    License Site Id: ${licId}`,
     `    June 2024 Update`,
     `    'EVERYONE' HAS ACCESS TO ROOT GROUP.`,
@@ -214,11 +318,11 @@ function renderGeneralInformation(ts, serverName, peerName) {
     `    Available Physical Memory: ${avPhys} of ${totPhys} MBytes`,
     `    Available Paging File: ${avPage} of ${totPage} MBytes`,
     `    Available Virtual Memory: ${avVirt} of ${totVirt} MBytes`,
-    `    Process Working Set Size: ${rr(g.workingSetMb)} MBytes`,
-    `    Process Peak Working Set Size: ${rr(g.workingSetMb)} MBytes`,
-    `    Process Page File Usage: ${rr(g.pageFileMb)} MBytes`,
-    `    Process Peak Page File Usage: ${rr(g.pageFileMb)} MBytes`,
-    `    Memory used by database objects: ${rr(g.dbObjectsKb)} KBytes`,
+    `    Process Working Set Size: ${workingSetMb} MBytes`,
+    `    Process Peak Working Set Size: ${peakWorkingSetMb} MBytes`,
+    `    Process Page File Usage: ${pageFileMb} MBytes`,
+    `    Process Peak Page File Usage: ${peakPageFileMb} MBytes`,
+    `    Memory used by database objects: ${dbObjectsKb} KBytes`,
     `    Operating System: ${OS_POOL[ri(0, OS_POOL.length - 1)]}`,
     `    CPU: ${CPU_POOL[ri(0, CPU_POOL.length - 1)]}`,
     `    Registry Root: ${REGISTRY_ROOT_POOL[ri(0, REGISTRY_ROOT_POOL.length - 1)]}`,
