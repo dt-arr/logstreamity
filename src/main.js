@@ -125,6 +125,20 @@ function prepareLinesFromText(text){
   return out;
 }
 
+// Like prepareLinesFromText but accepts an already-split string[].
+// Each element is treated as one log entry — multi-line payloads (e.g. the
+// general_information_snapshot block) are preserved as a single entry rather
+// than being re-split on embedded newlines.
+function prepareLinesFromArray(arr){
+  const out = [];
+  for (const s of arr){
+    if (!s || !s.trim()) continue;
+    const lvl = parseSeverityFromLine(s);
+    out.push({ content: s, derived: lvl ? { loglevel: lvl } : {} });
+  }
+  return out;
+}
+
 // ===== Attributes UI wiring =====
 fetch('./attributes.json')
   .then(res => res.json())
@@ -600,7 +614,7 @@ document.getElementById('generateBtn')?.addEventListener('click', () => {
 
   const count = parseInt(document.getElementById('generatorCount')?.value || '500', 10);
   const lines = gen.fn(count);
-  PREPARED_LINES = prepareLinesFromText(lines.join('\n'));
+  PREPARED_LINES = prepareLinesFromArray(lines);
   logLines = lines;
 
   const info = document.getElementById('generatorInfo');
