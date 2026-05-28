@@ -412,7 +412,12 @@ export function generateGeoScadaLines(count, { startMs, distributionMode } = {})
 
     // Render the template
     if (id === 'general_information_snapshot') {
-      lines.push(...renderGeneralInformation(ts, serverName, peerName));
+      // Skipped in uniform mode (multi-line block distorts even counts).
+      // In realistic mode, emitted as a single newline-joined payload so the
+      // entire snapshot arrives as one log entry rather than ~30 loose lines.
+      if (mode !== 'uniform') {
+        lines.push(renderGeneralInformation(ts, serverName, peerName).join('\n'));
+      }
     } else {
       const line = renderSingleLine(id, ts, serverName);
       if (line) lines.push(line);
