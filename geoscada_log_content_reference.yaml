@@ -238,12 +238,12 @@ value_ranges:
   trans_syncexecute:
     # Dashboard shows OPC Sync Exec Time: max ~4ms, min ~0.5ms, avg ~1-2ms
     # In seconds: max 0.004, min 0.0005, typical avg 0.001-0.002
-    runtime_seconds_6dp: { min: 0.000500, max: 0.004000, format: "6dp" }
+    runtime_seconds_6dp: { min: 0.000800, max: 0.001200, format: "6dp", baseline: 0.000900, spike_to: 0.001100 }
 
   trans_onexecute:
     # Dashboard shows OPC On Exec Time: max ~3.5ms, min ~0.5ms, avg ~1.5-2ms
     # In seconds: max 0.0035, min 0.0005, typical avg 0.0015-0.002
-    runtime_seconds_6dp: { min: 0.000500, max: 0.003500, format: "6dp" }
+    runtime_seconds_6dp: { min: 0.000800, max: 0.001200, format: "6dp", baseline: 0.000850, spike_to: 0.001050 }
 
   svr_accepted_connection:
     # DB New Connections: max ~550, baseline ~100-200, typical transitions 200-500
@@ -254,44 +254,46 @@ value_ranges:
     src_ip_octet:      { min: 1, max: 254, note: "192.168.<octet>.<octet>" }
     dest_ip_octet:     { min: 1, max: 254, note: "192.168.<octet>.<octet>" }
     socket_hex:        { min: 0x0000, max: 0xFFFF, format: "HEX4" }
+    rate_baseline:     { min: 2.5, max: 2.8, note: "Near threshold of 3; gradual spikes to 3.5" }
+    rate_spike:        { min: 3.0, max: 3.5, note: "Rare, gradual rise over 3-5 samples" }
 
   svradvise_sendevent:
     # Client Queued Events: max ~160, baseline ~0-50, spikes to ~150-160
     # Queue count typically 1-3, rare spikes to 5-6
     area_letter:    { values: ["A", "Z"], note: "two uppercase letters AA..ZZ" }
     area_number:    { min: 1, max: 999 }
-    bytes:          { min: 50, max: 500 }
+    bytes:          { min: 200, max: 500 }
     client_id:      { min: 1, max: 99 }
-    queue_count:    { min: 1, max: 6, note: "typically 1-3; occasional spikes to 5-6" }
+    queue_count:    { min: 3, max: 5, note: "Baseline 3-4; gradual spikes to 5, rare 6" }
 
   lus_lock_usage:
     # DB Lock Usage: max ~85%, baseline ~20-45%, typical range 20-70%
     # Average appears around 40-50% with periodic oscillations
-    percent_4dp: { min: 15.0000, max: 85.0000, format: "4dp", typical_max: 60.0, note: "DB lock usage observed 15-85%; normal operation 20-70%" }
+    percent_4dp: { min: 70.0000, max: 80.0000, format: "4dp", typical_max: 60.0, note: "DB lock usage observed 15-85%; normal operation 20-70%", baseline_min: 71.0000, baseline_max: 74.0000, spike_max: 76.0000, rare_spike_max: 80.0000, spike_ramp_samples: 5 }
 
   logic_onschedule:
     # Logic Scheduled: shows max ~35 programs, baseline ~1-5, typical max 25-30
     # Very regular pattern with consistent scheduling
-    programs: { min: 1, max: 35 }
+    programs: { min: 12, max: 20, baseline_min: 13, baseline_max: 14, spike_max: 17, rare_spike_max: 20 }
 
   datafile_flush_cycle_complete:
     # Data File Flush: max ~7-8ms, baseline ~0.5-2ms, typical avg 1-3ms
     # Files typically 0-2 per cycle
     files:             { min: 0, max: 2 }
     bytes_per_file:    { min: 0, max: 2048, note: "total bytes = files * bytes_per_file" }
-    milliseconds_6dp:  { min: 0.500000, max: 8.000000, format: "6dp" }
+    milliseconds_6dp:  { min: 3.000000, max: 4.500000, format: "6dp", baseline_min: 3.200000, baseline_max: 3.800000, spike_max: 4.200000, rare_spike_max: 4.500000 }
 
   stby_transfer_complete:
     # DB Runtime Sync Time: max ~290ms, baseline ~10-50ms, typical range 5-200ms
     # Transfers appear to complete in 5-300ms range
     transfer_number:      { min: 1, max: 999 }
-    runtime_seconds_3dp:  { min: 0.005, max: 0.290, format: "3dp" }
-    record_counter:       { min: 0, max: 50000, note: "applies to Data/Dyn/Int/Evt/HisRec/AlsRec/JnlRec/JnlFile/Cfg" }
+    runtime_seconds_3dp:  { min: 0.006, max: 0.009, format: "3dp", baseline_min: 0.006, baseline_max: 0.0075, spike_max: 0.008, rare_spike_max: 0.009 }
+    record_counter:       { min: 35000, max: 50000, note: "Near upper range; baseline 38000–47000" }
 
   snapshot_completed:
     # Snapshot Generation: max ~80ms, baseline ~30-50ms, typical range 20-80ms
     # Shows regular oscillation pattern, rarely exceeds 80ms
-    snapshot_ms: { min: 20, max: 80 }
+    snapshot_ms: { min: 1100, max: 1800, baseline_min: 1200, baseline_max: 1400, spike_max: 1550, rare_spike_max: 1800 }
 
   do_minuteop: {}  # no numeric values; literal heartbeat line
 
@@ -300,36 +302,36 @@ value_ranges:
     # Physical memory: ~48GB total, ~28-35GB available at baseline
     # Peak usage shows available dropping to ~8-15GB during high load
     total_physical_memory_mb:     { min: 49152, max: 49152, note: "Fixed at ~48GB observed" }
-    available_physical_memory_mb: { min: 8192,  max: 35840, note: "Range 8-35GB; baseline 28-35GB" }
+    available_physical_memory_mb: { min: 8192,  max: 14336, baseline_min: 10240, baseline_max: 13312, note: "Baseline 10-13GB; gradual dips to 8-9GB; rare brief recovery to 14GB" }
     # Paging file: typical 16-24GB total
     total_paging_file_mb:         { min: 16384, max: 24576 }
-    available_paging_file_mb:     { min: 4096,  max: 24576, note: "Highly variable; baseline 12-24GB" }
+    available_paging_file_mb:     { min: 4096,  max: 8192, baseline_min: 5120, baseline_max: 7168, note: "Near lower bound; baseline 5-7GB; rare dip to 4GB" }
     # Virtual memory: large addressing space, 120-500GB typical
     total_virtual_memory_mb:      { min: 131072, max: 524288 }
-    available_virtual_memory_mb:  { min: 65536,  max: 524288, note: "Scales with available physical + paging" }
+    available_virtual_memory_mb:  { min: 65536,  max: 131072, note: "Kept near lower useful range; baseline 70-100GB" }
     # Process working set: ~800-1400MB typical, peaks to ~1600-2000MB
-    process_working_set_size_mb:  { min: 800, max: 2000 }
-    process_peak_working_set_mb:  { min: 1000, max: 2000 }
+    process_working_set_size_mb:  { min: 1500, max: 2000, baseline_min: 1600, baseline_max: 1850, note: "Baseline 1600-1850MB; gradual spikes to 1900-2000MB" }
+    process_peak_working_set_mb:  { min: 1700, max: 2000 }
     # Process paging: ~300-500MB typical
-    process_page_file_usage_mb:   { min: 300, max: 800 }
-    process_peak_page_file_mb:    { min: 400, max: 1000 }
+    process_page_file_usage_mb:   { min: 600, max: 800, baseline_min: 650, baseline_max: 770 }
+    process_peak_page_file_mb:    { min: 800, max: 1000 }
     # Database objects: highly variable, typical 100-400MB
-    memory_used_by_db_objects_kb: { min: 100000, max: 500000, note: "Observed 100-400MB range" }
+    memory_used_by_db_objects_kb: { min: 380000, max: 500000, baseline_min: 400000, baseline_max: 470000, note: "Baseline 400-470MB; gradual spikes to 480-500MB" }
     # Database points: dashboard shows ~150-200K total in system
-    total_database_points:        { min: 150000, max: 250000, note: "Observed ~200K typical" }
-    database_points:              { min: 120000, max: 250000, note: "Active points usage 120-250K" }
+    total_database_points:        { min: 220000, max: 250000, note: "Near capacity; baseline 225-245K" }
+    database_points:              { min: 210000, max: 250000, note: "Near upper; baseline 215-240K" }
     # OPC Clients: 0-10 typically connected
     total_opc_clients:            { min: 50, max: 200, note: "Capacity; actual ~0-10 seen" }
-    opc_clients:                  { min: 0,  max: 12, note: "Active OPC connections 0-10" }
+    opc_clients:                  { min: 8,  max: 12, note: "Near upper; baseline 9-11" }
     # ViewX Clients: 0-3 typically
     total_viewx_clients:          { min: 20, max: 100, note: "Capacity; actual ~0-3 seen" }
-    viewx_clients:                { min: 0,  max: 5, note: "Active ViewX 0-3" }
+    viewx_clients:                { min: 3,  max: 5, note: "Near upper; baseline 3-4" }
     # WebX Clients: 0-5 typically
     total_webx_clients:           { min: 20, max: 100, note: "Capacity; actual ~0-5 seen" }
-    webx_clients:                 { min: 0,  max: 6, note: "Active WebX 0-5" }
+    webx_clients:                 { min: 4,  max: 6, note: "Near upper; baseline 4-5" }
     # Data Access Clients: 0-20 typically, peaks to 25-30
     total_data_access_clients:    { min: 30, max: 100, note: "Capacity; actual peak ~25-30" }
-    data_access_clients:          { min: 0,  max: 30, note: "Active data access 0-25" }
+    data_access_clients:          { min: 22, max: 30, note: "Near upper; baseline 23-28" }
     # HTTP/HTTPS ports
     http_port:                    { min: 8000, max: 8099 }
     https_port:                   { min: 8443, max: 8543 }
